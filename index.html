@@ -43,10 +43,10 @@
   <header class="px-4 pt-4 pb-2 flex items-center justify-between">
     <div>
       <h1 class="text-xl font-semibold tracking-wide">北歐旅遊行程助手</h1>
-      <p class="text-xs text-[var(--color-nordic-muted)]">冰島 + 芬蘭 · 行程 / 地圖 / 分帳</p>
+      <p class="text-xs text-[var(--color-nordic-muted)]">冰島 + 芬蘭 · 行程 / 地圖</p>
     </div>
     <div class="flex items-center gap-2">
-      <span class="text-xs text-[var(--color-nordic-muted)]">v0.2</span>
+      <span class="text-xs text-[var(--color-nordic-muted)]">v0.3</span>
     </div>
   </header>
 
@@ -79,7 +79,7 @@
     </div>
   </section>
 
-  <!-- Tabs -->
+  <!-- 只保留 行程 / 地圖 Tabs -->
   <section class="px-4 pb-2">
     <div class="bg-[var(--color-nordic-card)] rounded-2xl p-1 flex text-xs shadow-sm">
       <button
@@ -105,16 +105,11 @@
           <h2 class="text-sm font-semibold">{{ currentDay.label }} · {{ currentDay.title }}</h2>
           <p class="text-[11px] text-[var(--color-nordic-muted)]">{{ currentDay.date }}</p>
         </div>
-        <button
-          @click="addItemToSelectedDay"
-          class="text-xs px-2 py-1 rounded-xl bg-[var(--color-nordic-accent)] text-[var(--color-nordic-text)]"
-        >
-          ＋ 新增行程
-        </button>
+        <!-- 移除新增行程按鈕 -->
       </div>
 
-      <div v-if="currentDay.items.length === 0" class="text-xs text-[var(--color-nordic-muted)]">
-        尚未新增行程，可以先加入「時間 / 地點 / 備註」，後續再慢慢補。
+      <div v-if="currentDay.items.length === 0" class="text-xs text-[var(--color-nordic-muted)] text-center py-8">
+        選擇其他日期查看行程
       </div>
 
       <div
@@ -124,35 +119,21 @@
       >
         <div class="flex items-center justify-between mb-1">
           <div class="flex items-center gap-2">
-            <input
-              v-model="item.time"
-              placeholder="時間，例如 09:00-11:00"
-              class="text-xs border-0 bg-transparent focus:outline-none focus:ring-0 font-semibold"
-            />
+            <div class="text-xs font-semibold px-2 py-1 bg-[var(--color-nordic-accent-soft)] rounded-xl">
+              {{ item.time }}
+            </div>
             <span class="text-[10px] text-[var(--color-nordic-muted)]">
               {{ item.type || '行程' }}
             </span>
           </div>
-          <button
-            @click="removeItemFromSelectedDay(idx)"
-            class="text-[10px] text-red-400"
-          >
-            刪除
-          </button>
+          <!-- 移除刪除按鈕 -->
         </div>
 
-        <input
-          v-model="item.place"
-          placeholder="地點／活動名稱"
-          class="w-full text-xs border-0 bg-transparent focus:outline-none focus:ring-0 mb-1"
-        />
+        <div class="text-xs font-medium mb-1">{{ item.place }}</div>
 
-        <textarea
-          v-model="item.note"
-          placeholder="備註：交通方式、預約編號、吃什麼、要帶什麼..."
-          rows="2"
-          class="w-full text-[11px] border-0 bg-transparent focus:outline-none focus:ring-0 resize-none text-[var(--color-nordic-muted)]"
-        ></textarea>
+        <div v-if="item.note" class="text-[11px] text-[var(--color-nordic-muted)] leading-relaxed mb-2">
+          {{ item.note }}
+        </div>
 
         <!-- 天氣資訊 -->
         <div class="mt-2 flex items-center justify-between text-[11px] text-[var(--color-nordic-muted)]">
@@ -167,14 +148,14 @@
               讀取天氣中…
             </span>
             <span v-else>
-              尚未取得天氣
+              點擊取得天氣
             </span>
           </div>
           <button
             @click="fetchWeatherForItem(item)"
-            class="text-[10px] underline decoration-dotted"
+            class="text-[10px] underline decoration-dotted hover:text-[var(--color-nordic-text)] transition-colors"
           >
-            更新天氣
+            天氣
           </button>
         </div>
       </div>
@@ -193,83 +174,10 @@
       </div>
 
       <div class="text-[11px] text-[var(--color-nordic-muted)] mb-1">
-        會將當日所有行程地點釘在地圖上；若未設定座標，暫時以隨機點示意，可逐步改成真實座標。
+        會將當日所有行程地點釘在地圖上，點擊標記可查看詳情。
       </div>
 
       <div id="map" class="w-full h-64 rounded-2xl overflow-hidden shadow-sm"></div>
-    </section>
-
-    <!-- 分帳 Tab -->
-    <section v-if="currentTab === '分帳'">
-      <div class="mb-2">
-        <h2 class="text-sm font-semibold mb-1">分帳與匯率換算</h2>
-        <p class="text-[11px] text-[var(--color-nordic-muted)]">
-          輸入外幣金額與幣別，會自動換算成新台幣（暫用自訂匯率，可接即時匯率 API）。[web:31]
-        </p>
-      </div>
-
-      <div class="bg-[var(--color-nordic-card)] rounded-2xl p-3 shadow-sm space-y-2 mb-3">
-        <div class="flex gap-2 items-center">
-          <input
-            v-model.number="fx.amount"
-            type="number"
-            min="0"
-            placeholder="金額"
-            class="flex-1 text-xs border rounded-xl px-2 py-1"
-          />
-          <select
-            v-model="fx.currency"
-            class="w-20 text-xs border rounded-xl px-2 py-1"
-          >
-            <option value="EUR">EUR</option>
-            <option value="ISK">ISK</option>
-            <option value="SEK">SEK</option>
-          </select>
-        </div>
-        <div class="flex items-center justify-between text-[11px] text-[var(--color-nordic-muted)]">
-          <span>匯率來源：暫用靜態示意，可接外部匯率 API</span>
-          <button
-            @click="convertToTwd"
-            class="text-[10px] px-2 py-1 rounded-xl bg-[var(--color-nordic-accent)]"
-          >
-            換算成 TWD
-          </button>
-        </div>
-        <div v-if="fx.resultTwd !== null" class="text-xs font-semibold">
-          約 NT$ {{ fx.resultTwd.toLocaleString() }}
-        </div>
-      </div>
-
-      <div class="bg-[var(--color-nordic-card)] rounded-2xl p-3 shadow-sm">
-        <h3 class="text-xs font-semibold mb-1">簡易分帳</h3>
-        <div class="space-y-2 text-[11px]">
-          <div class="flex gap-2 items-center">
-            <input
-              v-model.number="split.total"
-              type="number"
-              min="0"
-              placeholder="總金額（TWD）"
-              class="flex-1 text-xs border rounded-xl px-2 py-1"
-            />
-            <input
-              v-model.number="split.people"
-              type="number"
-              min="1"
-              placeholder="人數"
-              class="w-20 text-xs border rounded-xl px-2 py-1"
-            />
-          </div>
-          <button
-            @click="calcSplit"
-            class="w-full text-[11px] py-1 rounded-xl bg-[var(--color-nordic-accent)]"
-          >
-            計算每人應付
-          </button>
-          <div v-if="split.perPerson !== null" class="text-xs font-semibold">
-            每人約 NT$ {{ split.perPerson.toLocaleString() }}
-          </div>
-        </div>
-      </div>
     </section>
   </main>
 </div>
@@ -280,10 +188,11 @@ const { createApp } = Vue;
 createApp({
   data() {
     return {
-      tabs: ['行程', '地圖', '分帳'],
+      // 只保留 行程 / 地圖 tabs
+      tabs: ['行程', '地圖'],
       currentTab: '行程',
 
-      // 已預塞 2/24–3/8 冰島 + 芬蘭行程
+      // 已預塞 2/24–3/8 冰島 + 芬蘭行程（不可編輯）
       days: [
         {
           id: 1,
@@ -297,8 +206,8 @@ createApp({
               place: '台北 → 首爾 → 芬蘭 → 冰島',
               type: '交通',
               note: '確認各段航班時間、轉機航廈與是否需要重新托運行李。',
-              lat: null,
-              lng: null,
+              lat: 25.0803,
+              lng: 121.2327,
               weather: null,
             },
           ],
@@ -315,7 +224,7 @@ createApp({
               place: '凱夫拉維克機場 → 雷克雅未克飯店',
               type: '交通',
               note: '抵達冰島後入境、領行李，搭巴士或接駁前往市區飯店，先寄放行李。',
-              lat: 63.985,   // KEF 附近大致座標 [web:20]
+              lat: 63.985,
               lng: -22.6056,
               weather: null,
             },
@@ -349,16 +258,6 @@ createApp({
               lng: -21.9426,
               weather: null,
             },
-            {
-              id: 205,
-              time: '19:00–',
-              place: '飯店休息',
-              type: '休息',
-              note: '調整時差，整理隔天一日遊需要的衣物與器材。',
-              lat: 64.1466,
-              lng: -21.9426,
-              weather: null,
-            },
           ],
         },
         {
@@ -385,16 +284,6 @@ createApp({
               note: '典型景點：教會山、黑沙灘、漁村小鎮等，依實際團體路線為準。[web:8]',
               lat: 64.9,
               lng: -23.7,
-              weather: null,
-            },
-            {
-              id: 303,
-              time: '20:00–',
-              place: '返回雷克雅未克',
-              type: '交通',
-              note: '回到市區飯店，視體力決定要不要再出去買東西。',
-              lat: 64.1466,
-              lng: -21.9426,
               weather: null,
             },
           ],
@@ -493,16 +382,6 @@ createApp({
               lng: -19.363,
               weather: null,
             },
-            {
-              id: 504,
-              time: '傍晚',
-              place: '南岸小鎮住宿',
-              type: '住宿',
-              note: '抵達沿途小鎮飯店，晚上留意是否可直接看到極光。',
-              lat: 63.8,
-              lng: -18.0,
-              weather: null,
-            },
           ],
         },
         {
@@ -551,16 +430,6 @@ createApp({
               lng: -19.045,
               weather: null,
             },
-            {
-              id: 605,
-              time: '傍晚～晚上',
-              place: '返回雷克雅未克市區',
-              type: '交通',
-              note: '長途巴士車程，建議準備零食與充電設備。',
-              lat: 64.1466,
-              lng: -21.9426,
-              weather: null,
-            },
           ],
         },
         {
@@ -597,16 +466,6 @@ createApp({
               note: '晚間國內線，注意行李是否直掛。',
               lat: 66.5648,
               lng: 25.8304,
-              weather: null,
-            },
-            {
-              id: 704,
-              time: '21:30–翌日 10:00',
-              place: '羅瓦涅米市區住宿',
-              type: '住宿',
-              note: 'CHECK-IN 後好好休息，準備隔天移動到聖誕老人村。',
-              lat: 66.5039,
-              lng: 25.7294,
               weather: null,
             },
           ],
@@ -667,16 +526,6 @@ createApp({
             },
             {
               id: 902,
-              time: '14:00–20:00',
-              place: '自由時間／休息',
-              type: '休息',
-              note: '回住宿休息、整理照片，準備晚上的極光團。',
-              lat: 66.5432,
-              lng: 25.8472,
-              weather: null,
-            },
-            {
-              id: 903,
               time: '20:00–23:00',
               place: '極光追尋之旅（含烤肉晚餐）',
               type: '活動',
@@ -715,26 +564,6 @@ createApp({
             },
             {
               id: 1003,
-              time: '17:00–19:00',
-              place: '晚餐',
-              type: '餐食',
-              note: '吃飽後回住宿整理行李，準備搭夜舖火車。',
-              lat: 66.5039,
-              lng: 25.7294,
-              weather: null,
-            },
-            {
-              id: 1004,
-              time: '19:00–21:00',
-              place: '前往羅瓦涅米火車站',
-              type: '交通',
-              note: '預留時間辦理報到與找月台。',
-              lat: 66.5039,
-              lng: 25.7294,
-              weather: null,
-            },
-            {
-              id: 1005,
               time: '21:00–翌日',
               place: 'VR 極地夜舖列車（上舖）',
               type: '交通',
@@ -763,32 +592,12 @@ createApp({
             },
             {
               id: 1102,
-              time: '09:20–10:00',
-              place: '前往飯店放行李',
-              type: '交通',
-              note: '行李放好即可出門搭火車往坦佩雷。',
-              lat: 60.1719,
-              lng: 24.9414,
-              weather: null,
-            },
-            {
-              id: 1103,
               time: '10:00–15:00',
               place: '赫爾辛基 ↔ 坦佩雷 · 嚕嚕米博物館',
               type: '行程',
               note: '搭 VR 火車往坦佩雷，參觀 Moomin Museum 後再搭車返回。[web:7][web:16]',
               lat: 61.4981,
               lng: 23.7608,
-              weather: null,
-            },
-            {
-              id: 1104,
-              time: '15:00–',
-              place: '赫爾辛基飯店 Check-in',
-              type: '住宿',
-              note: '辦理入住，若有體力可晚上簡單走走市區。',
-              lat: 60.1719,
-              lng: 24.9414,
               weather: null,
             },
           ],
@@ -801,16 +610,6 @@ createApp({
           items: [
             {
               id: 1201,
-              time: '11:00',
-              place: '飯店 Check-out',
-              type: '住宿',
-              note: '退房後行李可寄放飯店或置物櫃。',
-              lat: 60.1719,
-              lng: 24.9414,
-              weather: null,
-            },
-            {
-              id: 1202,
               time: '11:00–13:00',
               place: '午餐',
               type: '餐食',
@@ -820,7 +619,7 @@ createApp({
               weather: null,
             },
             {
-              id: 1203,
+              id: 1202,
               time: '13:00–18:00',
               place: '赫爾辛基市區觀光',
               type: '市區',
@@ -830,53 +629,13 @@ createApp({
               weather: null,
             },
             {
-              id: 1204,
-              time: '18:30–20:00',
-              place: '晚餐',
-              type: '餐食',
-              note: '回飯店拿行李前先吃飽，避免機場太餓。',
-              lat: 60.1719,
-              lng: 24.9414,
-              weather: null,
-            },
-            {
-              id: 1205,
-              time: '20:00–20:30',
-              place: '拿行李',
-              type: '其他',
-              note: '回飯店或寄物點取回行李。',
-              lat: 60.1719,
-              lng: 24.9414,
-              weather: null,
-            },
-            {
-              id: 1206,
+              id: 1203,
               time: '20:30–21:30',
               place: '市中心 → HEL 機場',
               type: '交通',
               note: '搭機場火車約 30 分鐘，預留等車時間。[web:19]',
               lat: 60.3172,
               lng: 24.9633,
-              weather: null,
-            },
-            {
-              id: 1207,
-              time: '21:30–00:50',
-              place: '赫爾辛基機場候機',
-              type: '機場',
-              note: '辦理退稅、安檢與登機，準備返台。',
-              lat: 60.3172,
-              lng: 24.9633,
-              weather: null,
-            },
-            {
-              id: 1208,
-              time: '00:50–',
-              place: '芬蘭 → 台北',
-              type: '航班',
-              note: '長程夜間航班，可在機上整理照片與休息。',
-              lat: null,
-              lng: null,
               weather: null,
             },
           ],
@@ -892,29 +651,9 @@ createApp({
               time: '22:55',
               place: '抵達台北桃園機場',
               type: '抵達',
-              note: '下機後通關與領行李。',
+              note: '下機後通關與領行李，結束北歐旅程。',
               lat: 25.0803,
               lng: 121.2327,
-              weather: null,
-            },
-            {
-              id: 1302,
-              time: '00:00–01:00',
-              place: '機場接送回家',
-              type: '交通',
-              note: '預訂機場接送或親友接機。',
-              lat: 25.0478,
-              lng: 121.5319,
-              weather: null,
-            },
-            {
-              id: 1303,
-              time: '01:00–',
-              place: '回到家',
-              type: '休息',
-              note: '結束北歐旅程，好好睡一覺。',
-              lat: 25.0478,
-              lng: 121.5319,
               weather: null,
             },
           ],
@@ -922,23 +661,6 @@ createApp({
       ],
 
       selectedDayIndex: 0,
-
-      fx: {
-        amount: null,
-        currency: 'EUR',
-        resultTwd: null,
-        rates: {
-          EUR: 35.0,
-          ISK: 0.26,
-          SEK: 3.2,
-        },
-      },
-
-      split: {
-        total: null,
-        people: 2,
-        perPerson: null,
-      },
 
       map: null,
       markersLayer: null,
@@ -960,70 +682,21 @@ createApp({
     },
 
     addDay() {
-      const nextId = this.days.length + 1;
-      this.days.push({
-        id: nextId,
-        label: `Day ${nextId}`,
-        date: '未設定',
-        title: '自訂行程',
-        items: [],
-      });
-      this.selectedDayIndex = this.days.length - 1;
-    },
-
-    addItemToSelectedDay() {
-      const day = this.currentDay;
-      day.items.push({
-        id: Date.now(),
-        time: '',
-        place: '',
-        note: '',
-        type: '行程',
-        lat: null,
-        lng: null,
-        weather: null,
-      });
-    },
-
-    removeItemFromSelectedDay(idx) {
-      this.currentDay.items.splice(idx, 1);
-      if (this.currentTab === '地圖') {
-        this.$nextTick(() => this.focusTodayOnMap());
-      }
+      // 保留但不啟用新增日期功能
+      alert('此版本為固定行程展示版，如需新增請聯絡管理員');
     },
 
     async fetchWeatherForItem(item) {
-      if (!navigator.geolocation && !item.lat) {
-        item.weather = { loading: false, temp: '—', summary: '無法取得位置資料' };
+      if (!item.lat || !item.lng) {
+        item.weather = { loading: false, temp: '—', summary: '無座標資料' };
         return;
       }
 
       item.weather = { loading: true };
 
-      const getCoords = () =>
-        new Promise((resolve, reject) => {
-          if (item.lat && item.lng) {
-            resolve({ coords: { latitude: item.lat, longitude: item.lng } });
-          } else {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 5000,
-            });
-          }
-        });
-
       try {
-        const pos = await getCoords();
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-
-        item.lat = item.lat || lat;
-        item.lng = item.lng || lon;
-
-        // Open-Meteo 免金鑰即時天氣 API 示意 [web:40]
-        const url =
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-          `&current=temperature_2m,weather_code`;
+        // Open-Meteo 免金鑰即時天氣 API [web:40]
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${item.lat}&longitude=${item.lng}&current=temperature_2m,weather_code`;
 
         const res = await fetch(url);
         const data = await res.json();
@@ -1061,7 +734,7 @@ createApp({
     },
 
     initMap() {
-      this.map = L.map('map').setView([64.1466, -21.9426], 4);
+      this.map = L.map('map').setView([64.1466, -21.9426], 6);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap',
@@ -1069,12 +742,13 @@ createApp({
 
       this.markersLayer = L.layerGroup().addTo(this.map);
 
+      // 顯示目前位置（如果允許）
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const { latitude, longitude } = pos.coords;
             L.circleMarker([latitude, longitude], {
-              radius: 6,
+              radius: 8,
               color: '#f97316',
               fillColor: '#f97316',
               fillOpacity: 0.9,
@@ -1093,44 +767,23 @@ createApp({
 
       this.markersLayer.clearLayers();
 
-      const items = this.currentDay.items.filter((i) => i.place);
-      const bounds = [];
-
+      const items = this.currentDay.items.filter((i) => i.place && i.lat && i.lng);
+      
       items.forEach((item) => {
-        const lat = item.lat ?? 64.1466 + Math.random() * 0.5;
-        const lng = item.lng ?? -21.9426 + Math.random() * 0.5;
-
-        const marker = L.marker([lat, lng]).addTo(this.markersLayer);
+        const marker = L.marker([item.lat, item.lng]).addTo(this.markersLayer);
         marker.bindPopup(
-          `<strong>${item.place || '未命名地點'}</strong><br>${item.time || ''}`
+          `<div class="text-xs">
+            <strong>${item.place}</strong><br>
+            <span class="text-blue-600">${item.time}</span><br>
+            ${item.note ? item.note.substring(0, 80) + '...' : ''}
+          </div>`
         );
-
-        bounds.push([lat, lng]);
-
-        item.lat = lat;
-        item.lng = lng;
       });
 
-      if (bounds.length > 0) {
-        this.map.fitBounds(bounds, { padding: [40, 40] });
+      if (items.length > 0) {
+        const group = new L.featureGroup(items.map(i => L.marker([i.lat, i.lng])));
+        this.map.fitBounds(group.getBounds(), { padding: [20, 20] });
       }
-    },
-
-    convertToTwd() {
-      const rate = this.fx.rates[this.fx.currency] || 0;
-      if (!this.fx.amount || !rate) {
-        this.fx.resultTwd = 0;
-        return;
-      }
-      this.fx.resultTwd = Math.round(this.fx.amount * rate);
-    },
-
-    calcSplit() {
-      if (!this.split.total || !this.split.people) {
-        this.split.perPerson = 0;
-        return;
-      }
-      this.split.perPerson = Math.round(this.split.total / this.split.people);
     },
   },
 
