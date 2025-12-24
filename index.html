@@ -260,6 +260,25 @@
           </div>
         </div>
       </div>
+      
+      <!-- 全部日期總覽 -->
+      <div class="bg-[var(--color-nordic-card)] rounded-2xl p-3 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-[13px] font-semibold">全部日期總計</div>
+        </div>
+
+        <div class="text-[12px]">
+          <div class="flex items-center justify-between py-1">
+            <div class="text-[11px] text-[var(--color-nordic-muted)]">總人均花費</div>
+            <div class="text-[13px] font-semibold">{{ formatCurrency(totalPerPersonAcrossDays) }}</div>
+          </div>
+
+          <div class="flex items-center justify-between py-1">
+            <div class="text-[11px] text-[var(--color-nordic-muted)]">總合計（所有人）</div>
+            <div class="text-[13px] font-semibold">{{ formatCurrency(totalAllPeopleAcrossDays) }}</div>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 </div>
@@ -686,7 +705,7 @@ createApp({
         },
       ],
       selectedDayIndex: 0,
-      numberOfPeople: 2,
+      numberOfPeople: 3,
       // 地圖
       map: null,
       markersLayer: null,
@@ -700,6 +719,7 @@ createApp({
   computed: {
     currentDay() { return this.days[this.selectedDayIndex]; },
 
+    // 全部日期合計：每人
     totalPerPersonAcrossDays() {
       return this.days.reduce((sum, day) => {
         const daySum = (day.expenses || []).reduce((s, e) => s + (Number(e.amount) || 0), 0);
@@ -707,6 +727,7 @@ createApp({
       }, 0);
     },
 
+    // 全部日期合計：所有人
     totalAllPeopleAcrossDays() {
       return this.totalPerPersonAcrossDays * (this.numberOfPeople || 1);
     },
