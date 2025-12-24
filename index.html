@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>北歐旅遊行程助手</title>
+  <title>冰島芬蘭自由行</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Tailwind Play CDN [web:39] -->
@@ -24,6 +24,22 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+
+    /* 小圓數字樣式（給 polyline 上的順序標記） */
+    .route-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 9999px;
+      background: #f97316;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      border: 2px solid white;
+    }
   </style>
 
   <!-- Vue 3 CDN [web:35] -->
@@ -35,6 +51,9 @@
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Geoman (leaflet.pm) for editing (optional if you later integrate) -->
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.0/dist/leaflet-geoman.css" />
+  <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.0/dist/leaflet-geoman.min.js"></script>
 </head>
 
 <body class="bg-[var(--color-nordic-bg)] text-[var(--color-nordic-text)]">
@@ -42,8 +61,8 @@
   <!-- Header -->
   <header class="px-4 pt-4 pb-2 flex items-center justify-between">
     <div>
-      <h1 class="text-xl font-semibold tracking-wide">北歐旅遊行程助手</h1>
-      <p class="text-xs text-[var(--color-nordic-muted)]">冰島 + 芬蘭 · 行程 / 地圖</p>
+      <h1 class="text-xl font-semibold tracking-wide">冰島芬蘭自由行</h1>
+      <p class="text-xs text-[var(--color-nordic-muted)]">冰島 + 芬蘭 · 行程 / 地圖 / 費用</p>
     </div>
     <div class="flex items-center gap-2">
       <span class="text-xs text-[var(--color-nordic-muted)]">v0.3</span>
@@ -70,16 +89,11 @@
         <div class="text-[10px]">{{ day.date }}</div>
         <div class="text-[10px] truncate max-w-[80px]">{{ day.title }}</div>
       </button>
-      <button
-        @click="addDay"
-        class="flex-shrink-0 px-3 py-2 rounded-2xl border border-dashed border-[var(--color-nordic-accent)] text-xs text-[var(--color-nordic-muted)]"
-      >
-        ＋
-      </button>
+      <!-- 新增行程按鈕已移除 -->
     </div>
   </section>
 
-  <!-- 只保留 行程 / 地圖 Tabs -->
+  <!-- 只保留 行程 / 地圖 / 費用 Tabs -->
   <section class="px-4 pb-2">
     <div class="bg-[var(--color-nordic-card)] rounded-2xl p-1 flex text-xs shadow-sm">
       <button
@@ -105,7 +119,7 @@
           <h2 class="text-sm font-semibold">{{ currentDay.label }} · {{ currentDay.title }}</h2>
           <p class="text-[11px] text-[var(--color-nordic-muted)]">{{ currentDay.date }}</p>
         </div>
-        <!-- 移除新增行程按鈕 -->
+        <!-- 移除新增/刪除按鈕 -->
       </div>
 
       <div v-if="currentDay.items.length === 0" class="text-xs text-[var(--color-nordic-muted)] text-center py-8">
@@ -126,7 +140,6 @@
               {{ item.type || '行程' }}
             </span>
           </div>
-          <!-- 移除刪除按鈕 -->
         </div>
 
         <div class="text-xs font-medium mb-1">{{ item.place }}</div>
@@ -161,23 +174,133 @@
       </div>
     </section>
 
-    <!-- 地圖 Tab -->
-    <section v-if="currentTab === '地圖'">
+    <!-- 地圖 Tab（v-show 保留容器） -->
+    <section v-show="currentTab === '地圖'">
       <div class="flex items-center justify-between mb-2">
         <h2 class="text-sm font-semibold">地圖與導航</h2>
-        <button
-          @click="focusTodayOnMap"
-          class="text-[10px] px-2 py-1 rounded-xl bg-[var(--color-nordic-accent)]"
-        >
-          重新整理釘點
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            @click="focusTodayOnMap"
+            class="text-[10px] px-2 py-1 rounded-xl bg-[var(--color-nordic-accent)]"
+          >
+            重新整理釘點
+          </button>
+          <button
+            @click="toggleRoute"
+            :class="showRoute ? 'bg-[var(--color-nordic-text)] text-white' : 'bg-[var(--color-nordic-accent-soft)] text-[var(--color-nordic-text)]'"
+            class="text-[10px] px-2 py-1 rounded-xl border"
+          >
+            {{ showRoute ? '隱藏路線' : '顯示路線順序' }}
+          </button>
+        </div>
       </div>
 
       <div class="text-[11px] text-[var(--color-nordic-muted)] mb-1">
-        會將當日所有行程地點釘在地圖上，點擊標記可查看詳情。
+        會將當日所有行程地點釘在地圖上，並可顯示依行程順序的路線（折線與順序數字）。
       </div>
 
       <div id="map" class="w-full h-64 rounded-2xl overflow-hidden shadow-sm"></div>
+    </section>
+
+    <!-- 費用 Tab -->
+    <section v-if="currentTab === '費用'">
+      <div class="flex items-center justify-between mb-2">
+        <div>
+          <h2 class="text-sm font-semibold">{{ currentDay.label }} · 費用紀錄</h2>
+          <p class="text-[11px] text-[var(--color-nordic-muted)]">{{ currentDay.date }} — 可記錄並分類個人費用</p>
+        </div>
+        <div class="text-[11px] text-[var(--color-nordic-muted)]">
+          人數
+          <input type="number" v-model.number="numberOfPeople" min="1" class="w-14 ml-2 px-2 py-1 text-[11px] rounded-xl border" />
+        </div>
+      </div>
+
+      <div class="mb-2 text-[11px] text-[var(--color-nordic-muted)]">
+        新增費用項目，金額為「每人金額」，系統會顯示每人小計與乘上總人數後的總計。
+      </div>
+
+      <div class="bg-[var(--color-nordic-card)] rounded-2xl p-3 shadow-sm mb-3">
+        <!-- 新增費用表單 -->
+        <div class="flex gap-2 mb-2">
+          <select v-model="newExpense.category" class="px-2 py-1 rounded-xl text-[11px] border">
+            <option>景點</option>
+            <option>住宿</option>
+            <option>餐食</option>
+            <option>其他</option>
+          </select>
+          <input v-model="newExpense.desc" placeholder="說明 (例如：門票 / 晚餐)" class="flex-1 px-2 py-1 rounded-xl text-[11px] border" />
+          <input v-model.number="newExpense.amount" type="number" min="0" step="0.01" placeholder="每人金額" class="w-28 px-2 py-1 rounded-xl text-[11px] border" />
+          <button @click="addExpense(currentDay)" class="px-3 py-1 rounded-xl bg-[var(--color-nordic-accent)] text-[var(--color-nordic-text)] text-[11px]">新增</button>
+        </div>
+
+        <!-- 當日費用列表 -->
+        <div v-if="currentDay.expenses && currentDay.expenses.length === 0" class="text-[11px] text-[var(--color-nordic-muted)] py-6 text-center">
+          尚無費用紀錄，使用上方表單新增。
+        </div>
+
+        <div v-for="expense in currentDay.expenses" :key="expense.id" class="border-t pt-2 mt-2 text-[12px]">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <select v-model="expense.category" class="px-2 py-1 rounded-xl text-[11px] border">
+                <option>景點</option>
+                <option>住宿</option>
+                <option>餐食</option>
+                <option>其他</option>
+              </select>
+              <input v-model="expense.desc" placeholder="說明" class="px-2 py-1 rounded-xl text-[11px] border" />
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="text-[11px] text-[var(--color-nordic-muted)]">每人</div>
+              <input v-model.number="expense.amount" type="number" min="0" step="0.01" class="w-24 px-2 py-1 rounded-xl text-[11px] border" />
+              <button @click="removeExpense(currentDay, expense.id)" class="text-[11px] px-2 py-1 rounded-xl bg-red-100 text-red-600">刪除</button>
+            </div>
+          </div>
+          <div class="text-[11px] text-[var(--color-nordic-muted)] mt-1">
+            總計：每人 {{ formatCurrency(expense.amount) }} × {{ numberOfPeople }} = <strong>{{ formatCurrency(expense.amount * numberOfPeople) }}</strong>
+          </div>
+        </div>
+
+        <!-- 當日分類小計 -->
+        <div class="mt-3 border-t pt-3">
+          <div class="flex items-center justify-between text-[12px] mb-1">
+            <div class="text-[13px] font-medium">當日小計</div>
+            <div class="text-[12px] text-[var(--color-nordic-muted)]">每人 / 總計</div>
+          </div>
+
+          <div v-for="(vals, cat) in dayCategoryTotals(currentDay)" :key="cat" class="flex items-center justify-between text-[12px] py-1">
+            <div class="text-[11px] text-[var(--color-nordic-muted)]">{{ cat }}</div>
+            <div class="text-[12px]">
+              {{ formatCurrency(vals.perPerson) }} / <strong>{{ formatCurrency(vals.total) }}</strong>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-[13px] font-semibold mt-2">
+            <div>當日合計</div>
+            <div>
+              {{ formatCurrency(dayTotalPerPerson(currentDay)) }} / <strong>{{ formatCurrency(dayTotalAll(currentDay)) }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 全部日期總覽 -->
+      <div class="bg-[var(--color-nordic-card)] rounded-2xl p-3 shadow-sm">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-[13px] font-semibold">全部日期總計</div>
+        </div>
+
+        <div class="text-[12px]">
+          <div class="flex items-center justify-between py-1">
+            <div class="text-[11px] text-[var(--color-nordic-muted)]">總人均花費</div>
+            <div class="text-[13px] font-semibold">{{ formatCurrency(totalPerPersonAcrossDays) }}</div>
+          </div>
+
+          <div class="flex items-center justify-between py-1">
+            <div class="text-[11px] text-[var(--color-nordic-muted)]">總合計（所有人）</div>
+            <div class="text-[13px] font-semibold">{{ formatCurrency(totalAllPeopleAcrossDays) }}</div>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 </div>
@@ -188,8 +311,8 @@ const { createApp } = Vue;
 createApp({
   data() {
     return {
-      // 只保留 行程 / 地圖 tabs
-      tabs: ['行程', '地圖'],
+      // 新增 費用 tab
+      tabs: ['行程', '地圖', '費用'],
       currentTab: '行程',
 
       // 已預塞 2/24–3/8 冰島 + 芬蘭行程（不可編輯）
@@ -200,7 +323,6 @@ createApp({
           date: '02/24',
           title: '台北 → 冰島（轉機：仁川、赫爾辛基）',
           items: [
-            // 新增：機場接送
             {
               id: 101,
               time: '14:00–14:40',
@@ -211,7 +333,6 @@ createApp({
               lng: 121.2327,
               weather: null,
             },
-            // 航班：TPE → ICN
             {
               id: 102,
               time: '17:10–20:35',
@@ -222,19 +343,16 @@ createApp({
               lng: 121.2327,
               weather: null,
             },
-            // 轉機（仁川）
             {
               id: 103,
               time: '20:35–23:00',
               place: '仁川國際機場 — 轉機等待',
               type: '轉機',
               note: '轉機時間約 2 小時 25 分鐘，確認登機門與是否需再次安檢／出境手續。',
-              // 仁川機場座標
               lat: 37.4602,
               lng: 126.4407,
               weather: null,
             },
-            // 航班：ICN → HEL
             {
               id: 104,
               time: '23:00–05:40 (+1)',
@@ -245,7 +363,6 @@ createApp({
               lng: 126.4407,
               weather: null,
             },
-            // 轉機（赫爾辛基）
             {
               id: 105,
               time: '05:40–07:05',
@@ -256,7 +373,6 @@ createApp({
               lng: 24.9633,
               weather: null,
             },
-            // 航班：HEL → KEF
             {
               id: 106,
               time: '07:05–09:00',
@@ -703,12 +819,46 @@ createApp({
           date: '03/08',
           title: '抵達台北',
           items: [
+            // 回程航班：HEL -> HKG (AY99) 00:50–19:05
             {
               id: 1301,
+              time: '00:50–19:05',
+              place: '赫爾辛基機場 (HEL) → 香港 (HKG)',
+              type: '航班（芬蘭航空 AY99）',
+              note: '出發 00:50（HEL），飛行約 12 小時 15 分鐘，19:05 抵達香港，於香港機場轉機約 2 小時 05 分（見下一段）。航班服務、餐食與機上娛樂請參考航空公告。',
+              lat: 60.3172,
+              lng: 24.9633,
+              weather: null,
+            },
+            // 轉機等待：HKG 19:05–21:10
+            {
+              id: 1302,
+              time: '19:05–21:10',
+              place: '香港機場 — 轉機等待（約 2 小時 05 分鐘）',
+              type: '轉機',
+              note: '建議確認登機門與是否需通關或重新安檢，預留時間處理登機與免稅店事宜。',
+              lat: 22.3080,
+              lng: 113.9185,
+              weather: null,
+            },
+            // 轉機航班：HKG -> TPE (BR858) 21:10–22:55
+            {
+              id: 1303,
+              time: '21:10–22:55',
+              place: '香港 (HKG) → 台北桃園 (TPE)',
+              type: '航班（長榮航空 BR858）',
+              note: '出發 21:10（HKG），飛行約 1 小時 45 分，22:55 抵達台北桃園 (TPE)。整段旅程總耗時約 16 小時 05 分（含轉機）。',
+              lat: 22.3080,
+              lng: 113.9185,
+              weather: null,
+            },
+            // 抵達台北（備註保留）
+            {
+              id: 1304,
               time: '22:55',
-              place: '抵達台北桃園機場',
+              place: '抵達台北桃園機場 (TPE)',
               type: '抵達',
-              note: '下機後通關與領行李，結束北歐旅程。',
+              note: '下機後通關與領行李，結束北歐旅程。記得檢查行李與退稅單據。',
               lat: 25.0803,
               lng: 121.2327,
               weather: null,
@@ -719,8 +869,15 @@ createApp({
 
       selectedDayIndex: 0,
 
+      // 費用相關
+      numberOfPeople: 2,
+      newExpense: { category: '景點', desc: '', amount: 0 },
+
+      // 地圖相關
       map: null,
-      markersLayer: null,
+      markersLayer: null, // 普通地點標記
+      routeLayer: null,   // polyline 與順序標記
+      showRoute: false,
     };
   },
 
@@ -728,6 +885,35 @@ createApp({
     currentDay() {
       return this.days[this.selectedDayIndex];
     },
+
+    // 全部日期合計：每人
+    totalPerPersonAcrossDays() {
+      return this.days.reduce((sum, day) => {
+        const daySum = (day.expenses || []).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+        return sum + daySum;
+      }, 0);
+    },
+
+    // 全部日期合計：所有人
+    totalAllPeopleAcrossDays() {
+      return this.totalPerPersonAcrossDays * (this.numberOfPeople || 1);
+    },
+  },
+
+  // 監聽 currentTab，當切換到 地圖 時確保地圖初始化與重新計算尺寸
+  watch: {
+    currentTab(newVal) {
+      if (newVal === '地圖') {
+        this.$nextTick(() => {
+          if (!this.map) {
+            this.initMap();
+          } else {
+            try { this.map.invalidateSize(); } catch (e) {}
+          }
+          this.focusTodayOnMap();
+        });
+      }
+    }
   },
 
   methods: {
@@ -736,6 +922,12 @@ createApp({
       if (this.currentTab === '地圖') {
         this.$nextTick(() => this.focusTodayOnMap());
       }
+    },
+
+    toggleRoute() {
+      this.showRoute = !this.showRoute;
+      // 重新繪製地圖內容（會根據 showRoute 決定是否畫 polyline + 順序標記）
+      this.$nextTick(() => this.focusTodayOnMap());
     },
 
     addDay() {
@@ -791,6 +983,9 @@ createApp({
     },
 
     initMap() {
+      // 若已存在 map 則略過
+      if (this.map) return;
+
       this.map = L.map('map').setView([64.1466, -21.9426], 6);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -798,6 +993,7 @@ createApp({
       }).addTo(this.map);
 
       this.markersLayer = L.layerGroup().addTo(this.map);
+      this.routeLayer = L.layerGroup().addTo(this.map);
 
       // 顯示目前位置（如果允許）
       if (navigator.geolocation) {
@@ -817,16 +1013,24 @@ createApp({
           { enableHighAccuracy: true, timeout: 5000 }
         );
       }
+
+      // 若容器初始為 hidden（v-show 但樣式可能仍影響），延遲呼叫 invalidateSize 可避免顯示問題
+      setTimeout(() => {
+        try { this.map.invalidateSize(); } catch (e) {}
+      }, 200);
     },
 
     focusTodayOnMap() {
-      if (!this.map || !this.markersLayer) return;
+      if (!this.map || !this.markersLayer || !this.routeLayer) return;
 
+      // 清除所有圖層（保留 base tiles）
       this.markersLayer.clearLayers();
+      this.routeLayer.clearLayers();
 
       const items = this.currentDay.items.filter((i) => i.place && i.lat && i.lng);
-      
-      items.forEach((item) => {
+
+      // 一般標記（可點開看詳情）
+      items.forEach((item, idx) => {
         const marker = L.marker([item.lat, item.lng]).addTo(this.markersLayer);
         marker.bindPopup(
           `<div class="text-xs">
@@ -837,17 +1041,107 @@ createApp({
         );
       });
 
-      if (items.length > 0) {
-        const group = new L.featureGroup(items.map(i => L.marker([i.lat, i.lng])));
-        this.map.fitBounds(group.getBounds(), { padding: [20, 20] });
+      // 如果啟用路線，繪製 polyline 並在每個點上加順序數字標記
+      if (this.showRoute && items.length > 0) {
+        const latlngs = items.map(i => [i.lat, i.lng]);
+
+        // polyline
+        const poly = L.polyline(latlngs, { color: '#f97316', weight: 4, opacity: 0.9 }).addTo(this.routeLayer);
+
+        // 順序標記（使用 divIcon）
+        items.forEach((item, idx) => {
+          const order = idx + 1;
+          const divIcon = L.divIcon({
+            className: '',
+            html: `<div class="route-num">${order}</div>`,
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+            popupAnchor: [0, -12],
+          });
+          const numMarker = L.marker([item.lat, item.lng], { icon: divIcon }).addTo(this.routeLayer);
+          numMarker.bindPopup(
+            `<div class="text-xs">
+              <strong>#${order} ${item.place}</strong><br>
+              <span class="text-blue-600">${item.time}</span>
+            </div>`
+          );
+        });
+
+        // adjust view to fit route
+        try {
+          this.map.fitBounds(poly.getBounds(), { padding: [20, 20] });
+        } catch (e) {
+          // ignore if poly has invalid bounds
+        }
+      } else {
+        // 若沒路線，根據一般標記調整視窗
+        if (items.length > 0) {
+          const group = new L.featureGroup(items.map(i => L.marker([i.lat, i.lng])));
+          this.map.fitBounds(group.getBounds(), { padding: [20, 20] });
+        }
       }
+    },
+
+    // ---------------- 費用管理方法 ----------------
+    ensureExpensesInitialized() {
+      this.days.forEach(d => {
+        if (!Array.isArray(d.expenses)) d.expenses = [];
+      });
+    },
+
+    addExpense(day) {
+      const e = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        category: this.newExpense.category || '其他',
+        desc: this.newExpense.desc || '',
+        amount: Number(this.newExpense.amount) || 0,
+      };
+      day.expenses.push(e);
+      this.newExpense.desc = '';
+      this.newExpense.amount = 0;
+      this.newExpense.category = '景點';
+    },
+
+    removeExpense(day, expenseId) {
+      day.expenses = (day.expenses || []).filter(e => e.id !== expenseId);
+    },
+
+    dayCategoryTotals(day) {
+      const categories = {};
+      (day.expenses || []).forEach(e => {
+        const cat = e.category || '其他';
+        if (!categories[cat]) categories[cat] = { perPerson: 0, total: 0 };
+        const per = Number(e.amount) || 0;
+        categories[cat].perPerson += per;
+        categories[cat].total = categories[cat].perPerson * (this.numberOfPeople || 1);
+      });
+      return categories;
+    },
+
+    dayTotalPerPerson(day) {
+      return (day.expenses || []).reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    },
+
+    dayTotalAll(day) {
+      return this.dayTotalPerPerson(day) * (this.numberOfPeople || 1);
+    },
+
+    formatCurrency(value) {
+      const v = Number(value) || 0;
+      return Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', maximumFractionDigits: 0 }).format(v);
     },
   },
 
   mounted() {
     this.$nextTick(() => {
+      // 確保每個 day 有 expenses 陣列
+      this.ensureExpensesInitialized();
+
+      // 初始化地圖（v-show 已確保 #map 在 DOM），並嘗試 focus
       this.initMap();
-      this.focusTodayOnMap();
+      if (this.currentTab === '地圖') {
+        this.focusTodayOnMap();
+      }
     });
   },
 }).mount('#app');
